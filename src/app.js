@@ -13,7 +13,8 @@ const PORT = 7777;
 
 // ✅ CORS setup
 const allowedOrigins = [
-  "http://localhost:5173", 
+  "http://localhost:5173", // local dev
+  "https://myexpensetrackerr.vercel.app" // Vercel prod
 ];
 
 const corsOptions = {
