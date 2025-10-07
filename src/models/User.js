@@ -68,14 +68,6 @@ const userSchema = new mongoose.Schema({
       return Math.round(this.monthlyExpense / 4.33);
     },
     min: 0
-  },
-  dailyExpense: {
-    type: Number,
-    default: function() {
-      // Calculate daily expense as monthly / 30 (average days per month)
-      return Math.round(this.monthlyExpense / 30);
-    },
-    min: 0
   }
 }, { timestamps: true });
 
@@ -92,11 +84,105 @@ userSchema.methods.validatePassword = async function(passwordInputByUser) {
   return isPasswordCorrect;
 }
 
-// Pre-save middleware to update weekly and daily expenses if monthlyExpense changes
+// Expense Statistics Methods
+userSchema.methods.getExpenseStatistics = async function(period = 'monthly') {
+  const userId = this._id;
+  const now = new Date();
+  let startDate, endDate;
+
+  switch (period) {
+    case 'weekly':
+      startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'monthly':
+    default:
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      break;
+  }
+
+  const Expense = mongoose.model('Expense');
+  const totalSpent = await Expense.aggregate([
+    {
+      $match: {
+        userId: userId,
+        date: { $gte: startDate, $lte: endDate }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$price' }
+      }
+    }
+  ]);
+
+  const spent = totalSpent.length > 0 ? totalSpent[0].total : 0;
+  const budget = this[`${period}Expense`];
+  const remaining = budget - spent;
+  const percentageUsed = budget > 0 ? (spent / budget) * 100 : 0;
+
+  return {
+    period,
+    budget,
+    spent,
+    remaining,
+    percentageUsed: Math.min(percentageUsed, 100),
+    isOverBudget: spent > budget
+  };
+};
+
+userSchema.methods.getCategoryWiseExpenses = async function(period = 'monthly') {
+  const userId = this._id;
+  const now = new Date();
+  let startDate, endDate;
+
+  switch (period) {
+    case 'weekly':
+      startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'monthly':
+    default:
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      break;
+  }
+
+  const Expense = mongoose.model('Expense');
+  const categoryExpenses = await Expense.aggregate([
+    {
+      $match: {
+        userId: userId,
+        date: { $gte: startDate, $lte: endDate }
+      }
+    },
+    {
+      $group: {
+        _id: '$category',
+        total: { $sum: '$price' },
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { total: -1 }
+    }
+  ]);
+
+  return categoryExpenses;
+};
+
+// Pre-save middleware to update weekly expense if monthlyExpense changes
 userSchema.pre('save', function(next) {
   if (this.isModified('monthlyExpense')) {
     this.weeklyExpense = Math.round(this.monthlyExpense / 4.33);
-    this.dailyExpense = Math.round(this.monthlyExpense / 30);
   }
   next();
 });
