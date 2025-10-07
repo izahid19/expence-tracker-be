@@ -55,31 +55,28 @@ const userSchema = new mongoose.Schema({
           throw new Error("Invalid image URL: " + value);
         }
       },
+  },
+  monthlyExpense: {
+    type: Number,
+    default: 6000,
+    min: 0
+  },
+  weeklyExpense: {
+    type: Number,
+    default: function() {
+      // Calculate weekly expense as monthly / 4.33 (average weeks per month)
+      return Math.round(this.monthlyExpense / 4.33);
     },
-    hobbies: {
-      type: [String],
-      default: [],
-      validate(value) {
-        if (value.length > 15) {
-          throw new Error("Hobbies cannot contain more than 15 items");
-        }
-      },
+    min: 0
+  },
+  dailyExpense: {
+    type: Number,
+    default: function() {
+      // Calculate daily expense as monthly / 30 (average days per month)
+      return Math.round(this.monthlyExpense / 30);
     },
-    desc: {
-      type: String,
-      trim: true,
-      default: "",
-      validate(value) {
-        if (value.trim() === "") return true; // allow empty string
-
-        const wordCount = value.trim().split(/\s+/).length;
-        if (wordCount > 400) {
-          throw new Error(
-            `Description must be less than 400 words. Current word count: ${wordCount}`
-          );
-        }
-      },
-    },
+    min: 0
+  }
 }, { timestamps: true });
 
 userSchema.methods.getJwtToken = async function() {
@@ -94,6 +91,15 @@ userSchema.methods.validatePassword = async function(passwordInputByUser) {
   const isPasswordCorrect = await Bycrypt.compare(passwordInputByUser, hashPassword);
   return isPasswordCorrect;
 }
+
+// Pre-save middleware to update weekly and daily expenses if monthlyExpense changes
+userSchema.pre('save', function(next) {
+  if (this.isModified('monthlyExpense')) {
+    this.weeklyExpense = Math.round(this.monthlyExpense / 4.33);
+    this.dailyExpense = Math.round(this.monthlyExpense / 30);
+  }
+  next();
+});
 
 const User = mongoose.model("User", userSchema);
 
