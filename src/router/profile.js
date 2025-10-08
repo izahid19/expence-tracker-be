@@ -7,7 +7,7 @@ const { validateEditProfileData } = require("../utils/validation");
 const sanitizeUser = (user) => {
   const userObj = user.toObject ? user.toObject() : user;
   
-  const { password, weeklyExpense, updatedAt, __v, ...sanitized } = userObj;
+  const { password, updatedAt, __v, ...sanitized } = userObj;
   return sanitized;
 };
 
