@@ -11,23 +11,37 @@ const cors = require("cors");
 const app = express();
 const PORT = 7777;
 
-// ✅ Simple CORS Configuration - This is enough!
-app.use(cors({
-  origin: "https://myexpensetrackerr.vercel.app",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "Accept"],
-}));
+// ✅ CORS setup
+// const allowedOrigins = [
+//   "http://localhost:5173", // local dev
+//   "https://myexpensetrackerr.vercel.app" // Vercel prod
+// ];
 
-// Middleware
+// const corsOptions = {
+//   origin: (origin, callback) => {
+//     if (!origin || allowedOrigins.includes(origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+//   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+//   allowedHeaders: ["Content-Type","Authorization"],
+//   credentials: true,
+// };
+
+
+// app.use(cors(corsOptions));
+
+app.use(
+  cors({
+    origin: "https://myexpensetrackerr.vercel.app", // your React app URL
+    credentials: true,                // ✅ allow cookies
+  })
+);
+
 app.use(express.json());
 app.use(cookieParser());
-
-// ✅ Request logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
 
 // ✅ Routes
 app.use("/", authRouter);
@@ -35,44 +49,14 @@ app.use("/", profileRouter);
 app.use("/", expenseRouter);
 app.use("/", userRouter);
 
-// ✅ Health check route
-app.get("/health", (req, res) => {
-  res.status(200).json({ 
-    message: "Server is running!", 
-    timestamp: new Date().toISOString(),
-    cors: "Enabled for http://localhost:5173"
-  });
-});
-
-// ✅ 404 handler
-app.use((req, res) => {
-  res.status(404).json({ 
-    message: "Route not found",
-    path: req.originalUrl 
-  });
-});
-
-// ✅ Error handling middleware
-app.use((err, req, res, next) => {
-  console.error("Error:", err);
-  
-  res.status(500).json({ 
-    message: "Internal Server Error",
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!'
-  });
-});
-
-// ✅ Database connection + server start
+// ✅ DB connection + server start
 connectDB()
   .then(() => {
-    console.log("✅ Database connected successfully");
+    console.log("✅ Database connected");
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on PORT: ${PORT}`);
-      console.log(`🌐 CORS enabled for: http://localhost:5173`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
     });
   })
   .catch((err) => {
-    console.log("❌ Database connection failed:", err);
-    process.exit(1);
+    console.log("❌ Something went wrong while connecting to DB:", err);
   });
