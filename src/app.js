@@ -35,7 +35,7 @@ const PORT = 7777;
 
 app.use(
   cors({
-    origin: "https://myexpensetrackerr.vercel.app", // your React app URL
+    origin: "http://localhost:5173", // your React app URL
     credentials: true,                // ✅ allow cookies
   })
 );
