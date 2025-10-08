@@ -12,26 +12,33 @@ const app = express();
 const PORT = 7777;
 
 // ✅ CORS setup
-const allowedOrigins = [
-  "http://localhost:5173", // local dev
-  "https://myexpensetrackerr.vercel.app" // Vercel prod
-];
+// const allowedOrigins = [
+//   "http://localhost:5173", // local dev
+//   "https://myexpensetrackerr.vercel.app" // Vercel prod
+// ];
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
-  credentials: true,
-};
+// const corsOptions = {
+//   origin: (origin, callback) => {
+//     if (!origin || allowedOrigins.includes(origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+//   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+//   allowedHeaders: ["Content-Type","Authorization"],
+//   credentials: true,
+// };
 
 
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
+
+app.use(
+  cors({
+    origin: "https://myexpensetrackerr.vercel.app", // your React app URL
+    credentials: true,                // ✅ allow cookies
+  })
+);
 
 app.use(express.json());
 app.use(cookieParser());

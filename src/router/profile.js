@@ -3,51 +3,76 @@ const profileRouter = express.Router();
 const { userAuth } = require("../middleware/auth");
 const { validateEditProfileData } = require("../utils/validation");
 
+// Helper function to sanitize user data
+const sanitizeUser = (user) => {
+  const userObj = user.toObject ? user.toObject() : user;
+  
+  const { password, updatedAt, __v, ...sanitized } = userObj;
+  return sanitized;
+};
+
 profileRouter.get("/profile/view", userAuth, async (req, res) => {
   try {
     const user = req.user;
-    res.send(user);
+    res.json({
+      message: "Profile fetched successfully",
+      data: sanitizeUser(user)
+    });
   } catch (err) {
-    res.status(400).send("Error: " + err);
+    res.status(400).json({ 
+      error: "Error fetching profile: " + err.message 
+    });
   }
 });
 
-profileRouter.patch("/profile/update", userAuth, async (req, res) => {
+profileRouter.put("/profile/update", userAuth, async (req, res) => {
   try {
     // Validate the data (should throw error if invalid)
     validateEditProfileData(req);
     
     const loggedInUser = req.user;
-
-    console.log("what is logged in user", loggedInUser);
     
-    // Whitelist allowed fields based on your schema
+    // Define allowed fields for update
     const ALLOWED_UPDATES = [
       'firstName', 
       'lastName', 
       'age', 
       'gender', 
-      'profilePicture', 
+      'profilePicture',
+      'monthlyExpense',
+      'weeklyExpense',
     ];
     
-    const updates = Object.keys(req.body);
-    const isValidOperation = updates.every(update => ALLOWED_UPDATES.includes(update));
+    const payload = req.body;
     
-    if (!isValidOperation) {
-      return res.status(400).json({ error: "Invalid updates - some fields are not allowed" });
+    // Check for invalid keys
+    const invalidKeys = Object.keys(payload).filter(
+      key => !ALLOWED_UPDATES.includes(key)
+    );
+    
+    if (invalidKeys.length > 0) {
+      return res.status(400).json({ 
+        error: `Invalid fields: ${invalidKeys.join(", ")}` 
+      });
     }
     
-    // Apply updates
-    updates.forEach(key => loggedInUser[key] = req.body[key]);
+    // Apply updates - only update fields that are provided
+    Object.keys(payload).forEach(key => {
+      if (ALLOWED_UPDATES.includes(key)) {
+        loggedInUser[key] = payload[key];
+      }
+    });
     
     await loggedInUser.save();
 
     res.json({ 
       message: "Profile updated successfully", 
-      data: loggedInUser 
+      data: sanitizeUser(loggedInUser)
     });
   } catch (err) {
-    res.status(400).json({ error: err.message || "Failed to update profile" });
+    res.status(400).json({ 
+      error: err.message || "Failed to update profile" 
+    });
   }
 });
 
