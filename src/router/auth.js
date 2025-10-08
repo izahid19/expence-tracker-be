@@ -49,7 +49,7 @@ authRouter.post("/logout", async (req, res) => {
     res.clearCookie("token", {
     httpOnly: true,
     secure: false,
-    sameSite: "None",
+    sameSite: "none",
     });
     res.send("Logout successful");
 })

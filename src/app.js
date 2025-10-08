@@ -11,26 +11,26 @@ const cors = require("cors");
 const app = express();
 const PORT = 7777;
 
-//✅ CORS setup
-const allowedOrigins = [
-  "http://localhost:5173", // local dev
-  "https://myexpensetrackerr.vercel.app" // Vercel prod
-];
-
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
+  origin: "http://localhost:5173",
   credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type", 
+    "Authorization", 
+    "X-Requested-With",
+    "Accept",
+    "Origin",
+    "Access-Control-Request-Method",
+    "Access-Control-Request-Headers",
+    "X-CSRF-Token"
+  ],
+  exposedHeaders: ["Set-Cookie", "Authorization"],
+  optionsSuccessStatus: 200,
+  maxAge: 86400 // 24 hours
 };
 
-
+// Apply CORS middleware
 app.use(cors(corsOptions));
 
 // app.use(
