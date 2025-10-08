@@ -40,7 +40,6 @@ profileRouter.put("/profile/update", userAuth, async (req, res) => {
       'gender', 
       'profilePicture',
       'monthlyExpense',
-      'weeklyExpense',
     ];
     
     const payload = req.body;
