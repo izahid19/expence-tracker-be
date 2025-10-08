@@ -10,7 +10,7 @@ userRouter.get("/user/dashboard", userAuth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     const { 
-      filterType = 'current_month', // current_month, last_month, current_week, last_week, current_year
+      filterType = 'current_month',
       customStartDate,
       customEndDate 
     } = req.query;
@@ -18,7 +18,7 @@ userRouter.get("/user/dashboard", userAuth, async (req, res) => {
     // Calculate date ranges based on filter type
     const dateRange = getDateRange(filterType, customStartDate, customEndDate);
 
-    // Get expense statistics
+    // Get expense statistics (always current month and week for comparison)
     const [monthlyStats, weeklyStats, filteredExpenses, categoryBreakdown] = await Promise.all([
       user.getExpenseStatistics('monthly'),
       user.getExpenseStatistics('weekly'),
@@ -26,8 +26,15 @@ userRouter.get("/user/dashboard", userAuth, async (req, res) => {
       getCategoryBreakdown(user._id, dateRange)
     ]);
 
-    // Get recent transactions (always show last 5)
-    const recentExpenses = await Expense.find({ userId: user._id })
+    // Calculate budget stats for the filtered period
+    const filteredMonthlyStats = await getFilteredBudgetStats(user, dateRange, 'monthly');
+    const filteredWeeklyStats = await getFilteredBudgetStats(user, dateRange, 'weekly');
+
+    // Get recent transactions from filtered period (top 5)
+    const recentExpenses = await Expense.find({ 
+      userId: user._id,
+      date: { $gte: dateRange.startDate, $lte: dateRange.endDate }
+    })
       .sort({ date: -1 })
       .limit(5)
       .lean();
@@ -39,8 +46,10 @@ userRouter.get("/user/dashboard", userAuth, async (req, res) => {
         weeklyExpense: user.weeklyExpense
       },
       statistics: {
-        monthly: monthlyStats,
-        weekly: weeklyStats
+        monthly: monthlyStats, // Current month stats (always)
+        weekly: weeklyStats,   // Current week stats (always)
+        filteredMonthly: filteredMonthlyStats, // Budget stats for selected period
+        filteredWeekly: filteredWeeklyStats    // Budget stats for selected period
       },
       filteredData: {
         filterType,
@@ -172,6 +181,62 @@ async function getCategoryBreakdown(userId, dateRange) {
       $sort: { total: -1 }
     }
   ]);
+}
+
+// Helper function to get budget stats for filtered period
+async function getFilteredBudgetStats(user, dateRange, period) {
+  const userId = user._id;
+  
+  const totalSpent = await Expense.aggregate([
+    {
+      $match: {
+        userId: userId,
+        date: { $gte: dateRange.startDate, $lte: dateRange.endDate }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$price' }
+      }
+    }
+  ]);
+
+  const spent = totalSpent.length > 0 ? totalSpent[0].total : 0;
+  
+  // Calculate days in the filtered period
+  const daysInPeriod = Math.ceil((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24)) + 1;
+  
+  let budget = 0;
+  
+  // Determine budget based on period length
+  if (period === 'monthly') {
+    // If it's a month-like period (25+ days), use monthly budget
+    if (daysInPeriod >= 25) {
+      budget = user.monthlyExpense;
+    }
+    // For year periods, calculate annual budget
+    else if (daysInPeriod >= 300) {
+      budget = user.monthlyExpense * 12;
+    }
+  } else if (period === 'weekly') {
+    // If it's a week-like period (5-10 days), use weekly budget
+    if (daysInPeriod >= 5 && daysInPeriod <= 10) {
+      budget = user.weeklyExpense;
+    }
+  }
+  
+  const remaining = budget - spent;
+  const percentageUsed = budget > 0 ? (spent / budget) * 100 : 0;
+
+  return {
+    period,
+    budget,
+    spent,
+    remaining,
+    percentageUsed: Math.min(percentageUsed, 100),
+    isOverBudget: spent > budget && budget > 0
+  };
 }
 
 // 📜 Get expense list for logged-in user (with optional filtering)
