@@ -13,7 +13,7 @@ const PORT = 7777;
 
 // ✅ Simple CORS Configuration - This is enough!
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: "https://myexpensetrackerr.vercel.app",
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Accept"],
