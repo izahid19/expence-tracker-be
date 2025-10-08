@@ -16,7 +16,7 @@ profileRouter.get("/profile/view", userAuth, async (req, res) => {
     const user = req.user;
     res.json({
       message: "Profile fetched successfully",
-      data: sanitizeUser(user)
+      data: user
     });
   } catch (err) {
     res.status(400).json({ 
