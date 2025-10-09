@@ -51,8 +51,32 @@ const userSchema = new mongoose.Schema({
       default:
         "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp",
       validate(value) {
-        if (!/^https?:\/\/.*\.(jpg|jpeg|png|webp|gif|svg)$/i.test(value)) {
-          throw new Error("Invalid image URL: " + value);
+        // Validate URL format using validator library
+        if (!Validate.isURL(value, { protocols: ['http', 'https'], require_protocol: true })) {
+          throw new Error("Invalid URL format: " + value);
+        }
+        
+        // Optional: Check if it's from trusted domains or has valid image patterns
+        // This allows URLs without extensions (like GitHub avatars, Cloudinary, etc.)
+        const validImagePattern = /\.(jpg|jpeg|png|webp|gif|svg|bmp|ico)(\?.*)?$/i;
+        const trustedDomains = [
+          'githubusercontent.com',
+          'avatars.githubusercontent.com', 
+          'cloudinary.com',
+          'imgur.com',
+          'googleusercontent.com',
+          'img.daisyui.com',
+          'unsplash.com',
+          'pexels.com',
+          'gravatar.com'
+        ];
+        
+        // Check if URL has image extension OR is from trusted domain
+        const hasTrustedDomain = trustedDomains.some(domain => value.includes(domain));
+        const hasImageExtension = validImagePattern.test(value);
+        
+        if (!hasImageExtension && !hasTrustedDomain) {
+          throw new Error("Invalid image URL. Must be from a trusted image hosting service or have a valid image extension: " + value);
         }
       },
   },
